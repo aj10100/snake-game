@@ -8,7 +8,7 @@ import pygame
 
 from src import game_state
 from src.config import STORM_BALL_HIDDEN_MAX_MS, STORM_BALL_HIDDEN_MIN_MS
-from src.constants import GRID_HEIGHT, GRID_WIDTH, TARGET_FPS, WINDOW_HEIGHT, WINDOW_TITLE, WINDOW_WIDTH
+from src.constants import GRID_HEIGHT, GRID_WIDTH, TARGET_FPS, WINDOW_HEIGHT, WINDOW_TITLE, WINDOW_WIDTH, CELL_SIZE, HUD_HEIGHT
 from src.difficulty import DifficultyManager
 from src.food import Food
 from src.physics import PhysicsEngine , collides_after_move, head_in_collision_zone
@@ -21,11 +21,15 @@ from src.snake import Snake
 from src.sound_manager import (
     SFX_DIE,
     SFX_EAT,
+    SFX_OPTION_CHOOSE,
     SFX_POISON,
     SFX_RECORD,
     SFX_SHIELD_GAIN,
     SFX_SHIELD_LOSS,
     SFX_TELEPORT,
+    SFX_TELEPORT_OUT,
+    SFX_MOVE_CLOUD,
+    SFX_MOVE_GLACIER,
     SoundManager,
 )
 from src.ui import (
@@ -82,8 +86,9 @@ def reset_run(
     return now_ms
 
 
-def handle_theme_change(prev_theme: str | None, world: World, physics: PhysicsEngine) -> None:
-    pass  # No automatic storm wind setup needed anymore
+def handle_theme_change(prev_theme: str | None, world: World, physics: PhysicsEngine, sound) -> None:
+    sound.play_theme_music(world.active_theme)
+    # pass  # no automatic storm wind setup needed anymore
 
 def handle_events(
     state: str,
@@ -117,11 +122,15 @@ def handle_events(
             if new_state == game_state.MENU:
                 if event.key == pygame.K_UP:
                     menu_selection = (menu_selection - 1) % len(MENU_ITEMS)
+                    sound.play(SFX_OPTION_CHOOSE)
                 elif event.key == pygame.K_DOWN:
                     menu_selection = (menu_selection + 1) % len(MENU_ITEMS)
+                    sound.play(SFX_OPTION_CHOOSE)
                 elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                    sound.play(SFX_OPTION_CHOOSE)
                     if menu_selection == 0:
                         move_reset = reset_run(snake, food, run_stats, world, physics, portals, difficulty, shield, now_ms)
+                        sound.play_theme_music(world.active_theme)
                         new_state = game_state.PLAYING
                     elif menu_selection == 1:
                         new_state = game_state.PRECAUTIONS
@@ -139,7 +148,6 @@ def handle_events(
                 continue
 
 
-                continue
 
             if new_state == game_state.DEAD and event.key == pygame.K_h:
                 new_state = game_state.MENU
@@ -167,12 +175,13 @@ def handle_events(
                 elif event.key == pygame.K_F2:
                     prev_theme = world.active_theme
                     world.enter_storm(now_ms)
-                    handle_theme_change(prev_theme, world, physics)
+                    handle_theme_change(prev_theme, world, physics,sound)
                 elif key_name is not None:
                     physics.on_key_down(key_name, run_stats.score)
                     snake.set_direction_from_key(key_name)
 
             if new_state == game_state.DEAD and event.key == pygame.K_r:
+                sound.play_theme_music(world.active_theme)
                 move_reset = reset_run(
                     snake, food, run_stats, world, physics, portals, difficulty, shield, now_ms
                 )
@@ -296,11 +305,15 @@ def update_game(
     move_direction = physics.resolve_direction(snake, world.maze_walls, now_ms, run_stats.score)
     pre_move = snake.snapshot()
     snake.move(move_direction)
+    # if world.active_theme == "ice":
+    #     sound.play(SFX_MOVE_GLACIER)
+    # elif world.active_theme == "storm":
+    #     sound.play(SFX_MOVE_CLOUD)
 
     prev_theme, portal_used = portals.try_teleport(snake, world, world.maze_walls, now_ms)
     if prev_theme is not None:
-        sound.play(SFX_TELEPORT)
         if portal_used == "exit":
+            sound.play(SFX_TELEPORT_OUT)
             # death- exit-portal after eating poison
             if physics.ate_poison_flag:
                 run_stats.record_death(DEATH_STORM, now_ms)
@@ -310,6 +323,7 @@ def update_game(
                 storm_warn = "WARNING: reverse portal speed active!"
                 storm_warn_until = now_ms + 2000
         elif portal_used == "entrance":
+            sound.play(SFX_TELEPORT)
             physics.on_entry_portal()
         for pos in food.all_positions():
             if pos in world.blocked_cells() or pos in portals.blocked_cells():
@@ -366,32 +380,90 @@ def draw(
     record_popup_until_ms: int,
     storm_warning_msg: str,
     storm_warning_until_ms: int,
+    assets: dict,
 ) -> None:
 
     if state == game_state.PRECAUTIONS:
-        draw_precautions(screen)
+        draw_precautions(screen, assets)
         return
     high_score = get_high_score(save_data)
 
     if state == game_state.MENU:
-        draw_main_menu(screen, menu_selection, high_score)
+        draw_main_menu(screen, menu_selection, high_score, assets)
         return
 
-    draw_playfield(screen, snake, food, world, portals, GRID_WIDTH, GRID_HEIGHT, shield, now_ms)
-    draw_hud(screen, run_stats, now_ms, world)
-    draw_wrong_color_warning(screen, shield.consecutive_breaks_without_correct)
+    draw_playfield(screen, snake, food, world, portals, GRID_WIDTH, GRID_HEIGHT, shield, now_ms, assets)
+    draw_hud(screen, run_stats, now_ms, world, assets)
+    draw_wrong_color_warning(screen, shield.consecutive_breaks_without_correct, assets)
     if state == game_state.PLAYING and now_ms < storm_warning_until_ms:
-        draw_storm_warning(screen, storm_warning_msg, now_ms)
-    draw_color_target(screen, food)
+        draw_storm_warning(screen, storm_warning_msg, now_ms, assets)
+    draw_color_target(screen, food, assets)
     if state == game_state.PLAYING and now_ms < record_popup_until_ms:
-        draw_new_record_popup(screen, run_stats.score, now_ms)
+        draw_new_record_popup(screen, run_stats.score, now_ms, assets)
 
 
     if state == game_state.PAUSED:
-        draw_pause_overlay(screen)
+        draw_pause_overlay(screen, assets)
     elif state == game_state.DEAD:
-        draw_game_over(screen, session, run_stats, now_ms, high_score, new_record, world, save_data)
+        draw_game_over(screen, session, run_stats, now_ms, high_score, new_record, world, save_data, assets)
 
+
+def load_assets() -> dict:
+    """Load all images, fonts, and sounds once at startup."""
+    import os
+    ASSETS = "assets"
+
+    def img(name: str, size: tuple[int, int] | None = None) -> pygame.Surface:
+        path = os.path.join(ASSETS, name)
+        surf = pygame.image.load(path).convert_alpha()
+        if size:
+            surf = pygame.transform.scale(surf, size)
+        return surf
+
+    cell = (CELL_SIZE, CELL_SIZE)
+    item_snake = (CELL_SIZE+10, CELL_SIZE+10)
+    item = (CELL_SIZE+20, CELL_SIZE+20)
+    playfield = (WINDOW_WIDTH, WINDOW_HEIGHT - HUD_HEIGHT)
+
+    return {
+        "snake_head":       img("snake_head.png",       item_snake),
+        "snake_body":       img("snake_body.png",       item_snake),
+        "snake_tail":       img("snake_tail.png",       item_snake),
+        "snake_head_dead":  img("snake_head_dead_poison_eat.png", item_snake),
+        "shield_head":      img("shield_head.png",      item_snake),
+        "shield_body":      img("shield_body.png",      item_snake),
+        "tail_shield":      img("tail_shield.png",      item_snake),
+        "food_green":       img("food_green.png",       item),
+        "food_red":         img("food_red.png",         item),
+        "food_violet":      img("food_violet.png",      item),
+        "poison":           img("poison.png",           item),
+        "entry_portal":     img("entry_portal.png",     item),
+        "exit_portal":      img("exit_portal.png",      item),
+
+        "bg_forest":  img("forest.png",  playfield),
+        "bg_desert":  img("desert.png",  playfield),
+        "bg_ice":     img("ice.png",     playfield),
+        "bg_storm":   img("storm.png",   playfield),
+        "bg_maze":    img("maze.png",    playfield),
+
+        "start_page":        img("start_page.png",        (800, 600)),
+        "finish_game":       img("finish_game.png",       (800, 600)),
+        "high_score_finish": img("high_score_finish.png", (800, 600)),
+
+        "font_menu_title": pygame.font.Font(os.path.join(ASSETS, "Menu_page_precaution.ttf"), 72),
+        "font_menu_item":  pygame.font.Font(os.path.join(ASSETS, "Menu_page_precaution.ttf"), 36),
+        "font_menu_hint":  pygame.font.Font(os.path.join(ASSETS, "Menu_page_precaution.ttf"), 20),
+        "font_hud":        pygame.font.Font(os.path.join(ASSETS, "inGame.ttf"), 18),
+        "font_body":       pygame.font.Font(os.path.join(ASSETS, "inGame.ttf"), 22),
+        "font_big":        pygame.font.Font(os.path.join(ASSETS, "inGame.ttf"), 44),
+
+        "stroop_violet": img("food_violet.png", item),
+        "stroop_green":  img("food_green.png",  item),
+        "stroop_red":    img("food_red.png",    item),
+        "stroop_violet": img("food_violet.png", item),
+        "stroop_yellow":  img("food_yellow.png",  item),
+        "stroop_pink":    img("food_pink.png",    item),
+    }
 
 def main() -> None:
     pygame.init()
@@ -399,6 +471,8 @@ def main() -> None:
     screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
     pygame.display.set_caption(WINDOW_TITLE)
     clock = pygame.time.Clock()
+
+    assets = load_assets()
 
     save_data = load_save()
     difficulty = DifficultyManager()
@@ -416,6 +490,7 @@ def main() -> None:
     now_ms = pygame.time.get_ticks()
 
     state = game_state.MENU
+    sound.play_menu_music()
     menu_selection = 0
     show_precautions = False
     storm_warning_msg = ""
@@ -460,6 +535,7 @@ def main() -> None:
 
         if state == game_state.DEAD and prev_state != game_state.DEAD:
             sound.play(SFX_DIE)
+            sound.play_game_over_music()
             if not death_saved:
                 new_record = record_run(save_data, session, run_stats, now_ms)
                 if record_popup_shown:
@@ -470,7 +546,7 @@ def main() -> None:
         draw(
             screen, state, session, run_stats, snake, food, world, physics, portals,
              difficulty, shield, now_ms, save_data, new_record, menu_selection,
-            record_popup_until_ms, storm_warning_msg, storm_warning_until_ms,
+            record_popup_until_ms, storm_warning_msg, storm_warning_until_ms, assets,
         )
         pygame.display.flip()
         clock.tick(TARGET_FPS)

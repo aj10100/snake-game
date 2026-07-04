@@ -6,6 +6,7 @@ from typing import Any
 
 import pygame
 
+
 from src import game_state
 from src.constants import (
     CELL_SIZE,
@@ -43,61 +44,60 @@ from src.world import STORM, World
 MENU_ITEMS = ["start", "precautions", "reset record", "quit"]
 
 
-def draw_main_menu(screen: pygame.Surface, selected: int, high_score: int) -> None:
-    screen.fill(COLOR_BACKGROUND)
+def draw_main_menu(screen, selected, high_score, assets):
+    # full-screen background image
+    screen.blit(assets["start_page"], (0, 0))
+
+    # # semi-transparent dark panel behind the menu items
+    # panel = pygame.Surface((400, 360), pygame.SRCALPHA)
+    # panel.fill((10, 10, 20, 180))
+    # panel_x = WINDOW_WIDTH // 2 - 200
+    # panel_y = 80
+    # screen.blit(panel, (panel_x, panel_y))
 
     center_x = WINDOW_WIDTH // 2
+    # title
+    title = assets["font_menu_title"].render("Classic Snake", True, (94, 23, 1)) #2, 31, 18
+    screen.blit(title, title.get_rect(center=(center_x, 140)))
 
-    title_font = pygame.font.Font(None, 80)
-    title = title_font.render("Classic Snake Game", True, COLOR_SNAKE_HEAD)
-    screen.blit(title, title.get_rect(center=(center_x, 110)))
+    # high score
+    score_surf = assets["font_body"].render(f"High Score: {high_score}", True, (255, 200, 80))
+    screen.blit(score_surf, score_surf.get_rect(center=(center_x, 200)))
 
-    tag_font = pygame.font.Font(None, 28)
-    tagline = tag_font.render("feel free to explore", True, COLOR_TEXT)
-    screen.blit(tagline, tagline.get_rect(center=(center_x, 158)))
-
-    score_font = pygame.font.Font(None, 36)
-    score_surf = score_font.render(f"High Score: {high_score}", True, COLOR_STORM_WARNING)
-    screen.blit(score_surf, score_surf.get_rect(center=(center_x, 205)))
-
-    item_font = pygame.font.Font(None, 44)
-    start_y = 280
+    # menu items
+    start_y = 250
     for index, label in enumerate(MENU_ITEMS):
         is_selected = index == selected
-        color = COLOR_STORM_WARNING if is_selected else COLOR_TEXT
+        color = (255, 200, 80) if is_selected else (200, 200, 210)
         prefix = "> " if is_selected else "   "
-        surf = item_font.render(f"{prefix}{label}", True, color)
-        screen.blit(surf, surf.get_rect(center=(center_x, start_y + index * 52)))
+        surf = assets["font_menu_item"].render(f"{prefix}{label}", True, color)
+        screen.blit(surf, surf.get_rect(center=(center_x, start_y + index * 48)))
 
-    hint_font = pygame.font.Font(None, 24)
-    hints = [
-        "Up / Down — Select",
-        "Enter — Confirm",
-        "Escape — Quit",
-    ]
-    y = WINDOW_HEIGHT - 110
+    # hints at the bottom
+    hints = ["Up / Down — Select", "Enter — Confirm", "Escape — Quit"]
+    y = WINDOW_HEIGHT - 100
     for line in hints:
-        surf = hint_font.render(line, True, COLOR_TEXT)
+        surf = assets["font_body"].render(line, True, (180, 180, 190))
         screen.blit(surf, surf.get_rect(center=(center_x, y)))
-        y += 26
+        y += 24
 
-    ctrl_font = pygame.font.Font(None, 22)
-    ctrl = ctrl_font.render(
-        "In-game: Arrows move  |  P pause  |  M mute",
-        True,
-        (160, 160, 170),
+    ctrl = assets["font_hud"].render(
+        "In-game: Arrows move  |  P pause  |  M mute", True, (140, 140, 150)
     )
-    screen.blit(ctrl, ctrl.get_rect(center=(center_x, WINDOW_HEIGHT - 28)))
+    screen.blit(ctrl, ctrl.get_rect(center=(center_x, WINDOW_HEIGHT - 24)))
 
-def draw_precautions(screen: pygame.Surface) -> None:
-    screen.fill(COLOR_BACKGROUND)
+def draw_precautions(screen: pygame.Surface, assets: dict,) -> None:
+    screen.blit(assets["high_score_finish"], (0, 0))
+    overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 160))
+    screen.blit(overlay, (0, 0))
     center_x = WINDOW_WIDTH // 2
 
-    title_font = pygame.font.Font(None, 52)
+    title_font = assets["font_menu_title"]
     title = title_font.render("Precautions", True, COLOR_STORM_WARNING)
     screen.blit(title, title.get_rect(center=(center_x, 60)))
 
-    body_font = pygame.font.Font(None, 26)
+    body_font = assets["font_menu_item"]
     lines = [
         "There are 4 worlds:",
         "",
@@ -117,7 +117,7 @@ def draw_precautions(screen: pygame.Surface) -> None:
         screen.blit(surf, surf.get_rect(center=(center_x, y)))
         y += 32
 
-    hint_font = pygame.font.Font(None, 24)
+    hint_font = assets["font_menu_hint"]
     hint = hint_font.render("Press Escape or Enter to go back", True, COLOR_TEXT)
     screen.blit(hint, hint.get_rect(center=(center_x, WINDOW_HEIGHT - 40)))
 
@@ -143,24 +143,24 @@ def draw_grid(
             (WINDOW_WIDTH, PLAYFIELD_Y + y * CELL_SIZE),
         )
 
-def draw_wrong_color_warning(screen: pygame.Surface, consecutive: int) -> None:
+def draw_wrong_color_warning(screen: pygame.Surface, consecutive: int, assets: dict,) -> None:
     if consecutive <= 0:
         return
-    font = pygame.font.Font(None, 26)
+    font = assets["font_body"]
     color = COLOR_GAME_OVER if consecutive >= 2 else COLOR_STORM_WARNING
     text = font.render(f"Wrong color: {consecutive}/3", True, color)
     screen.blit(text, text.get_rect(midtop=(WINDOW_WIDTH // 2, PLAYFIELD_Y + 6)))
 
-def draw_storm_warning(screen: pygame.Surface, msg: str, now_ms: int) -> None:
+def draw_storm_warning(screen: pygame.Surface, msg: str, now_ms: int, assets: dict,) -> None:
     if not msg:
         return
-    font = pygame.font.Font(None, 28)
+    font = assets["font_body"]
     color = COLOR_GAME_OVER if (now_ms // 400) % 2 == 0 else COLOR_STORM_WARNING
     surf = font.render(msg, True, color)
     screen.blit(surf, surf.get_rect(midbottom=(WINDOW_WIDTH // 2, WINDOW_HEIGHT - 8)))
 
 
-def draw_cell(screen: pygame.Surface, grid_pos: tuple[int, int], color: tuple[int, int, int]) -> None:
+def draw_cell(screen: pygame.Surface, grid_pos: tuple[int, int], color: tuple[int, int, int],) -> None:
     x, y = grid_pos
     rect = pygame.Rect(
         x * CELL_SIZE + 1,
@@ -171,94 +171,122 @@ def draw_cell(screen: pygame.Surface, grid_pos: tuple[int, int], color: tuple[in
     pygame.draw.rect(screen, color, rect)
 
 
-def _draw_portal(
-    screen: pygame.Surface,
-    grid_pos: tuple[int, int],
-    color: tuple[int, int, int],
-    on_cooldown: bool,
-) -> None:
+# def _draw_portal(
+#     screen: pygame.Surface,
+#     grid_pos: tuple[int, int],
+#     color: tuple[int, int, int],
+#     on_cooldown: bool,
+# ) -> None:
+#     x, y = grid_pos
+#     cx = x * CELL_SIZE + CELL_SIZE // 2
+#     cy = PLAYFIELD_Y + y * CELL_SIZE + CELL_SIZE // 2
+#     radius = CELL_SIZE // 2 - 2
+#     draw_color = COLOR_PORTAL_COOLDOWN if on_cooldown else color
+#     pygame.draw.circle(screen, draw_color, (cx, cy), radius)
+#     pygame.draw.circle(screen, COLOR_TEXT, (cx, cy), radius, 1)
+
+
+def _blit_sprite(screen, sprite, grid_pos):
+    x, y = grid_pos
+    screen.blit(sprite, (x * CELL_SIZE, PLAYFIELD_Y + y * CELL_SIZE))
+
+def _blit_sprite_centered(screen, sprite, grid_pos):
     x, y = grid_pos
     cx = x * CELL_SIZE + CELL_SIZE // 2
     cy = PLAYFIELD_Y + y * CELL_SIZE + CELL_SIZE // 2
-    radius = CELL_SIZE // 2 - 2
-    draw_color = COLOR_PORTAL_COOLDOWN if on_cooldown else color
-    pygame.draw.circle(screen, draw_color, (cx, cy), radius)
-    pygame.draw.circle(screen, COLOR_TEXT, (cx, cy), radius, 1)
+    rect = sprite.get_rect(center=(cx, cy))
+    screen.blit(sprite, rect)
 
-
-def draw_playfield(
-    screen: pygame.Surface,
-    snake: Snake,
-    food: Food,
-    world: World,
-    portals: PortalManager,
-    grid_width: int,
-    grid_height: int,
-    shield: ShieldState,
-    now_ms: int,
-) -> None:
+def draw_playfield(screen, snake, food, world, portals, grid_width, grid_height, shield, now_ms, assets):
+    # hud strip
     screen.fill(COLOR_HUD_PANEL, (0, 0, WINDOW_WIDTH, HUD_HEIGHT))
-    screen.fill(world.background_color, (0, PLAYFIELD_Y, WINDOW_WIDTH, WINDOW_HEIGHT - PLAYFIELD_Y))
-    draw_grid(screen, grid_width, grid_height, world.grid_line_color)
 
+    # theme background image
+    theme_bg_key = f"bg_{world.active_theme}"
+    if theme_bg_key in assets:
+        screen.blit(assets[theme_bg_key], (0, PLAYFIELD_Y))
+    else:
+        screen.fill(world.background_color, (0, PLAYFIELD_Y, WINDOW_WIDTH, WINDOW_HEIGHT - PLAYFIELD_Y))
+
+    # draw_grid(screen, grid_width, grid_height, world.grid_line_color)
+    grid_surf = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT - PLAYFIELD_Y), pygame.SRCALPHA)
+    grid_surf.fill((0, 0, 0, 0))
+    grid_color = (*world.grid_line_color, 60)
+    for x in range(grid_width + 1):
+        pygame.draw.line(grid_surf, grid_color, (x * CELL_SIZE, 0), (x * CELL_SIZE, WINDOW_HEIGHT - PLAYFIELD_Y))
+    for y in range(grid_height + 1):
+        pygame.draw.line(grid_surf, grid_color, (0, y * CELL_SIZE), (WINDOW_WIDTH, y * CELL_SIZE))
+    screen.blit(grid_surf, (0, PLAYFIELD_Y))
+
+    # maze walls
     for wall in world.maze_walls:
         draw_cell(screen, wall, COLOR_MAZE_WALL)
 
+    # portals
     if portals.visible and portals.entrance is not None:
-        _draw_portal(screen, portals.entrance, COLOR_PORTAL_ENTRANCE, portals.is_on_cooldown())
+        _blit_sprite_centered(screen, assets["entry_portal"], portals.entrance)
     if portals.visible and portals.exit is not None:
-        _draw_portal(screen, portals.exit, COLOR_PORTAL_EXIT, portals.is_on_cooldown())
+        _blit_sprite_centered(screen, assets["exit_portal"],  portals.exit)
 
+    # food
     if food.position is not None:
-        draw_cell(screen, food.position, COLOR_FOOD)
+        sprite_key = "food_red"      # default
+        if food.mode == "poison":
+            sprite_key = "food_violet"
+        elif food.mode == "color":
+            sprite_key = "food_green"
+        _blit_sprite_centered(screen, assets[sprite_key], food.position)
 
+    # stroop color-match items
     for color_key, pos in food.color_items.items():
-        draw_cell(screen, pos, stroop_rgb(color_key))
+        sprite_key = f"stroop_{color_key}"
+        if sprite_key in assets:
+            _blit_sprite_centered(screen, assets[sprite_key], pos)
+        else:
+            draw_cell(screen, pos, stroop_rgb(color_key))
 
+    # poison item
     if food.poison_position is not None:
-        draw_cell(screen, food.poison_position, COLOR_POISON)
+        _blit_sprite_centered(screen, assets["poison"], food.poison_position)
 
     if food.storm_ball_position is not None:
-        x, y = food.storm_ball_position
-        cx = x * CELL_SIZE + CELL_SIZE // 2
-        cy = PLAYFIELD_Y + y * CELL_SIZE + CELL_SIZE // 2
-        pygame.draw.circle(screen, COLOR_STORM_BALL, (cx, cy), CELL_SIZE // 2 - 2)
-        pygame.draw.circle(screen, (80, 80, 80), (cx, cy), CELL_SIZE // 2 - 2, 1)
+        _blit_sprite_centered(screen, assets["poison"], food.storm_ball_position)
 
-    flash_invuln = shield.is_invulnerable() and (now_ms // 120) % 2 == 0
+    # nnake — head, body, tail sprites;
+    shielded = shield.charges >0
     for index, segment in enumerate(snake.body):
-        color = COLOR_SNAKE_HEAD if index == 0 else COLOR_SNAKE_BODY
-        draw_cell(screen, segment, color)
+        if index == 0:
+            key = "shield_head" if shielded else "snake_head"
+        elif index == len(snake.body) - 1:
+            key = "tail_shield" if shielded else "snake_tail"
+        else:
+            key = "shield_body" if shielded else "snake_body"
+        _blit_sprite(screen, assets[key], segment)
 
 
-def draw_color_target(screen: pygame.Surface, food: Food) -> None:
+def draw_color_target(screen: pygame.Surface, food: Food, assets: dict,) -> None:
     if food.mode != "color":
         return
 
     word = stroop_label(food.target_color_key)
     ink = food.stroop_ink_rgb
 
-    font = pygame.font.Font(None, 22)
+    font = assets["font_hud"]
     label = font.render(word, True, ink)
     x = WINDOW_WIDTH - label.get_width() - 10
     screen.blit(label, (x, 8))
 
 
-def draw_hud(
-    screen: pygame.Surface,
-    run_stats: RunStats,
-    now_ms: int,
-    world: World,
-) -> None:
-    font = pygame.font.Font(None, 20)
+def draw_hud(screen, run_stats, now_ms, world, assets):
     text = (
-        f"Score {run_stats.score}  | "
-        f"{run_stats.survival_seconds(now_ms):.1f}s"
+        f"Score {run_stats.score}  |  "
+        f"{run_stats.survival_seconds(now_ms):.1f}s  |  "
+        f"{world.label}"
     )
-    screen.blit(font.render(text, True, COLOR_TEXT), (8, 5))
+    screen.blit(assets["font_hud"].render(text, True, COLOR_TEXT), (8, 4))
 
 
-def draw_new_record_popup(screen: pygame.Surface, score: int, now_ms: int) -> None:
+def draw_new_record_popup(screen: pygame.Surface, score: int, now_ms: int, assets: dict,) -> None:
     """Centered popup when the run beats the saved high score."""
     center_x = WINDOW_WIDTH // 2
     center_y = PLAYFIELD_Y + (WINDOW_HEIGHT - PLAYFIELD_Y) // 2
@@ -282,16 +310,16 @@ def draw_new_record_popup(screen: pygame.Surface, score: int, now_ms: int) -> No
 
 
 
-def draw_pause_overlay(screen: pygame.Surface) -> None:
+def draw_pause_overlay(screen: pygame.Surface, assets: dict,) -> None:
     overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
     overlay.fill((0, 0, 0, 140))
     screen.blit(overlay, (0, 0))
 
-    title_font = pygame.font.Font(None, 56)
+    title_font = assets["font_big"]
     title = title_font.render("PAUSED", True, COLOR_TEXT)
     screen.blit(title, title.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 20)))
 
-    hint_font = pygame.font.Font(None, 28)
+    hint_font = assets["font_body"]
     hint = hint_font.render("Press P or Escape to resume", True, COLOR_TEXT)
     screen.blit(hint, hint.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 24)))
 
@@ -347,27 +375,33 @@ def draw_game_over(
     high_score: int,
     new_record: bool,
     world: World,
-    save_data: dict[str, Any],
+    save_data: dict[str, Any], assets: dict,
 ) -> None:
+
+    bg_key = "high_score_finish" if new_record else "finish_game"
+    screen.blit(assets[bg_key], (0, 0))
+    # Darken so text is readable
     overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
-    overlay.fill((0, 0, 0, 175))
+    overlay.fill((0, 0, 0, 155))
     screen.blit(overlay, (0, 0))
+    overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
+
 
     center_x = WINDOW_WIDTH // 2
     y = 36
 
-    title_font = pygame.font.Font(None, 56)
+    title_font = assets["font_big"]
     title = title_font.render("Game Over", True, COLOR_GAME_OVER)
     screen.blit(title, title.get_rect(center=(center_x, y)))
     y += 48
 
     if new_record:
-        banner_font = pygame.font.Font(None, 40)
+        banner_font = assets["font_menu_item"]
         banner = banner_font.render("NEW RECORD!", True, COLOR_NEW_RECORD)
         screen.blit(banner, banner.get_rect(center=(center_x, y)))
         y += 36
 
-    body_font = pygame.font.Font(None, 26)
+    body_font = assets["font_body"]
     summary = [
         f"Score: {run_stats.score}   |   High Score: {high_score}",
         f"Survived: {run_stats.survival_seconds(now_ms):.1f}s",
@@ -383,6 +417,6 @@ def draw_game_over(
     history = save_data.get("history", [])
     y = _draw_history_table(screen, history, run_stats.score, y + 12)
 
-    hint_font = pygame.font.Font(None, 24)
+    hint_font = assets["font_menu_hint"]
     hint = hint_font.render("Press R to restart  |  H main menu  |  M mute  |  Escape quit", True, COLOR_TEXT)
     screen.blit(hint, hint.get_rect(center=(center_x, min(y + 24, WINDOW_HEIGHT - 20))))
