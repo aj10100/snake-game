@@ -203,27 +203,21 @@ def process_food_eat(
 
     eat_kind, point_delta = food.handle_eat(snake.head)
 
-    # ── Storm ball (poison) ────────────────────────────────────
     if eat_kind == "storm_ball":
         sound.play(SFX_POISON)
-        # Death: poison while 3× speed
         if physics.storm_mode == "speed":
             run_stats.record_death(DEATH_STORM, now_ms)
             return game_state.DEAD
-        # Death: 2nd consecutive poison in storm
         if world.active_theme == STORM and physics.storm_poison_count >= 1:
             run_stats.record_death(DEATH_STORM, now_ms)
             return game_state.DEAD
-        # Enter storm frozen mode
         prev_theme = world.active_theme
         world.enter_storm(now_ms)
         physics.enter_storm_frozen()
         return None
 
-    # ── Poison food item ───────────────────────────────────────
     if eat_kind == "poison":
         sound.play(SFX_POISON)
-        # Death: poison while 3× speed
         if physics.storm_mode == "speed":
             run_stats.record_death(DEATH_POISON, now_ms)
             return game_state.DEAD
@@ -236,10 +230,8 @@ def process_food_eat(
         run_stats.record_death(DEATH_POISON, now_ms)
         return game_state.DEAD
 
-    # ── Wrong color ────────────────────────────────────────────
     if eat_kind == "color_wrong":
         sound.play(SFX_EAT)
-        # Death: wrong color while 3× speed
         if physics.storm_mode == "speed":
             run_stats.record_death(DEATH_STORM, now_ms)
             return game_state.DEAD
@@ -253,11 +245,10 @@ def process_food_eat(
         food.respawn_color_pair(blocked_spawn_cells(snake, world, portals), snake, run_stats.score)
         return None
 
-    # ── Normal / correct color ─────────────────────────────────
     if eat_kind in ("normal", "color_correct"):
         sound.play(SFX_EAT)
         snake.queue_growth()
-        physics.on_food_eaten()  # Clears storm frozen mode
+        physics.on_food_eaten()
 
     if eat_kind == "color_correct":
         shield.on_correct_color()

@@ -1,21 +1,20 @@
 """Fixed values: window size, colors, and target frame rate."""
 
-# Window
+# window
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
 WINDOW_TITLE = "Advanced Snake"
 
-# Grid
+# grid
 CELL_SIZE = 20
 HUD_HEIGHT = 24
 PLAYFIELD_Y = HUD_HEIGHT
 GRID_WIDTH = WINDOW_WIDTH // CELL_SIZE
 GRID_HEIGHT = (WINDOW_HEIGHT - HUD_HEIGHT) // CELL_SIZE
 
-# Frame rate
+# frame rate
 TARGET_FPS = 60
 
-# Colors (RGB)
 COLOR_BACKGROUND = (20, 20, 30)
 COLOR_GRID_LINE = (35, 35, 50)
 COLOR_TEXT = (220, 220, 220)
@@ -37,7 +36,7 @@ COLOR_INVULN_FLASH = (255, 255, 180)
 COLOR_NEW_RECORD = (255, 215, 0)
 COLOR_HUD_PANEL = (12, 12, 22)
 
-# Theme display colors: (background, grid_line)
+# worlds
 THEME_PALETTES = {
     "forest": ((18, 42, 28), (28, 62, 38)),
     "desert": ((52, 40, 28), (72, 56, 38)),
