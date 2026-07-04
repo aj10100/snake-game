@@ -1,4 +1,4 @@
-"""Advanced Snake — entry point and main game loop."""
+"""Classic Snake """
 
 import random
 import sys
@@ -88,7 +88,7 @@ def reset_run(
 
 def handle_theme_change(prev_theme: str | None, world: World, physics: PhysicsEngine, sound) -> None:
     sound.play_theme_music(world.active_theme)
-    # pass  # no automatic storm wind setup needed anymore
+    # pass
 
 def handle_events(
     state: str,
@@ -130,6 +130,8 @@ def handle_events(
                     sound.play(SFX_OPTION_CHOOSE)
                     if menu_selection == 0:
                         move_reset = reset_run(snake, food, run_stats, world, physics, portals, difficulty, shield, now_ms)
+                        # sound._current_music_theme = None # force music to restrat
+                        sound.stop_music()  # explicitly stop menu music
                         sound.play_theme_music(world.active_theme)
                         new_state = game_state.PLAYING
                     elif menu_selection == 1:
@@ -150,6 +152,9 @@ def handle_events(
 
 
             if new_state == game_state.DEAD and event.key == pygame.K_h:
+                sound.stop_music()
+                sound._current_music_theme = None
+                sound.play_menu_music()
                 new_state = game_state.MENU
                 continue
 
@@ -181,10 +186,12 @@ def handle_events(
                     snake.set_direction_from_key(key_name)
 
             if new_state == game_state.DEAD and event.key == pygame.K_r:
-                sound.play_theme_music(world.active_theme)
+                sound.stop_music()
+                # sound._current_music_theme = None
                 move_reset = reset_run(
                     snake, food, run_stats, world, physics, portals, difficulty, shield, now_ms
                 )
+                sound.play_theme_music(world.active_theme)
                 new_state = game_state.PLAYING
 
         elif event.type == pygame.KEYUP and new_state == game_state.PLAYING:
@@ -222,6 +229,7 @@ def process_food_eat(
             return game_state.DEAD
         prev_theme = world.active_theme
         world.enter_storm(now_ms)
+        sound.play_theme_music(world.active_theme)
         physics.enter_storm_frozen()
         return None
 
@@ -330,6 +338,9 @@ def update_game(
                 spawn_food(food, snake, world, portals, difficulty, run_stats.score)
                 break
 
+        if  world.active_theme != prev_theme:
+            handle_theme_change(prev_theme, world, physics, sound)
+
     dead_state = process_food_eat(
         food, snake, run_stats, world, physics, portals, difficulty, shield, sound, now_ms
     )
@@ -423,6 +434,7 @@ def load_assets() -> dict:
     cell = (CELL_SIZE, CELL_SIZE)
     item_snake = (CELL_SIZE+10, CELL_SIZE+10)
     item = (CELL_SIZE+20, CELL_SIZE+20)
+    item_eat = (CELL_SIZE+30, CELL_SIZE+30)
     playfield = (WINDOW_WIDTH, WINDOW_HEIGHT - HUD_HEIGHT)
 
     return {
@@ -433,10 +445,10 @@ def load_assets() -> dict:
         "shield_head":      img("shield_head.png",      item_snake),
         "shield_body":      img("shield_body.png",      item_snake),
         "tail_shield":      img("tail_shield.png",      item_snake),
-        "food_green":       img("food_green.png",       item),
-        "food_red":         img("food_red.png",         item),
-        "food_violet":      img("food_violet.png",      item),
-        "poison":           img("poison.png",           item),
+        "food_green":       img("food_green.png",       item_eat),
+        "food_red":         img("food_red.png",         item_eat),
+        "food_violet":      img("food_violet.png",      item_eat),
+        "poison":           img("poison.png",           item_eat),
         "entry_portal":     img("entry_portal.png",     item),
         "exit_portal":      img("exit_portal.png",      item),
 
@@ -457,12 +469,11 @@ def load_assets() -> dict:
         "font_body":       pygame.font.Font(os.path.join(ASSETS, "inGame.ttf"), 22),
         "font_big":        pygame.font.Font(os.path.join(ASSETS, "inGame.ttf"), 44),
 
-        "stroop_violet": img("food_violet.png", item),
-        "stroop_green":  img("food_green.png",  item),
-        "stroop_red":    img("food_red.png",    item),
-        "stroop_violet": img("food_violet.png", item),
-        "stroop_yellow":  img("food_yellow.png",  item),
-        "stroop_pink":    img("food_pink.png",    item),
+        "stroop_violet": img("food_violet.png", item_eat),
+        "stroop_green":  img("food_green.png",  item_eat),
+        "stroop_red":    img("food_red.png",    item_eat),
+        "stroop_yellow":  img("food_yellow.png",  item_eat),
+        "stroop_pink":    img("food_pink.png",    item_eat),
     }
 
 def main() -> None:

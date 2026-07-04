@@ -23,7 +23,7 @@ def stroop_rgb(color_key: str) -> tuple[int, int, int]:
 
 
 def ball_count_for_score(score: int) -> int:
-    """Gradually increase Stroop balls from 2 up to 4."""
+    """gradually increase Stroop balls from 2 up to 4."""
     if score < 65:
         return 2
     if score < 85:

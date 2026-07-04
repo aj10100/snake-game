@@ -1,4 +1,4 @@
-"""Persistent high scores and run history (JSON)."""
+"""persistent high scores and run history (JSON)."""
 
 from __future__ import annotations
 
@@ -32,7 +32,6 @@ def _validate_save(data: Any) -> dict[str, Any]:
 
 
 def load_save() -> dict[str, Any]:
-    """Load save data; create a fresh default file if missing or corrupt."""
     try:
         if not SAVE_PATH.exists():
             data = default_save()
@@ -50,7 +49,6 @@ def load_save() -> dict[str, Any]:
 
 
 def write_save(data: dict[str, Any]) -> None:
-    """Write save data to disk."""
     SAVE_PATH.parent.mkdir(parents=True, exist_ok=True)
     SAVE_PATH.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
@@ -61,10 +59,7 @@ def record_run(
     run_stats: RunStats,
     now_ms: int,
 ) -> bool:
-    """
-    Append the finished run to history, update high score, and persist.
-    Returns True if this run set a new high score.
-    """
+
     entry = {
         "score": run_stats.score,
         "session_id": session.session_id,
@@ -89,7 +84,6 @@ def get_high_score(data: dict[str, Any]) -> int:
 
 
 def reset_all_save(data: dict[str, Any]) -> None:
-    """Wipe high score and run history, persisting a fresh save file."""
     fresh = default_save()
     data.clear()
     data.update(fresh)

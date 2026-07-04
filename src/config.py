@@ -1,4 +1,3 @@
-"""Tweakable gameplay settings."""
 
 MOVE_INTERVAL_MS = 135
 

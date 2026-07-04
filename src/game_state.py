@@ -1,4 +1,3 @@
-"""High-level run states."""
 
 MENU = "menu"
 PLAYING = "playing"

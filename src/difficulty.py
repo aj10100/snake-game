@@ -1,4 +1,4 @@
-"""Score-based difficulty tiers and debug gate overrides."""
+"""score based difficulty tiers """
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ TIER_LABELS = {
 
 
 class DifficultyManager:
-    """Progressive feature gates driven by score, with optional debug override."""
+    """progressive feature gates driven by score"""
 
     def __init__(self) -> None:
         self.force_tier: int | None = None

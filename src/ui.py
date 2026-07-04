@@ -1,4 +1,4 @@
-"""On-screen text: HUD, pause overlay, and game-over summary."""
+"""screen elements- HUD, pause overlay, and game-over summary."""
 
 from __future__ import annotations
 
@@ -25,6 +25,7 @@ from src.constants import (
     COLOR_SNAKE_BODY,
     COLOR_SNAKE_HEAD,
     COLOR_STORM_WARNING,
+    COLOR_PRECAUTIONS,
     COLOR_TEXT,
     HUD_HEIGHT,
     PLAYFIELD_Y,
@@ -48,7 +49,7 @@ def draw_main_menu(screen, selected, high_score, assets):
     # full-screen background image
     screen.blit(assets["start_page"], (0, 0))
 
-    # # semi-transparent dark panel behind the menu items
+    # # semi transparent dark panel behind the menu items
     # panel = pygame.Surface((400, 360), pygame.SRCALPHA)
     # panel.fill((10, 10, 20, 180))
     # panel_x = WINDOW_WIDTH // 2 - 200
@@ -93,21 +94,24 @@ def draw_precautions(screen: pygame.Surface, assets: dict,) -> None:
     screen.blit(overlay, (0, 0))
     center_x = WINDOW_WIDTH // 2
 
-    title_font = assets["font_menu_title"]
-    title = title_font.render("Precautions", True, COLOR_STORM_WARNING)
+    title_font = assets["font_menu_item"]
+    title = title_font.render("Precautions", True, COLOR_PRECAUTIONS)
     screen.blit(title, title.get_rect(center=(center_x, 60)))
 
-    body_font = assets["font_menu_item"]
+    body_font = assets["font_body"]
     lines = [
         "There are 4 worlds:",
         "",
         "  Forest",
         "  Desert",
         "  Glacier",
-        "  Clouds / Cyclone",
+        "  Storm",
         "",
-        "they come with your actions but quite randomly .",
-        "",
+        "they come with your actions ",
+        "but quite randomly .",
+        "keep an eye on the colors"
+         "(beware of the white-holes and mushrooms )",
+         "",
          "Feel free to explore ",
 
     ]
@@ -211,7 +215,7 @@ def draw_playfield(screen, snake, food, world, portals, grid_width, grid_height,
     # draw_grid(screen, grid_width, grid_height, world.grid_line_color)
     grid_surf = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT - PLAYFIELD_Y), pygame.SRCALPHA)
     grid_surf.fill((0, 0, 0, 0))
-    grid_color = (*world.grid_line_color, 60)
+    grid_color = (*world.grid_line_color, 25)
     for x in range(grid_width + 1):
         pygame.draw.line(grid_surf, grid_color, (x * CELL_SIZE, 0), (x * CELL_SIZE, WINDOW_HEIGHT - PLAYFIELD_Y))
     for y in range(grid_height + 1):
@@ -334,16 +338,16 @@ def _draw_history_table(
     screen: pygame.Surface,
     history: list[dict[str, Any]],
     current_score: int,
-    start_y: int,
+    start_y: int, assets: dict,
 ) -> int:
-    font = pygame.font.Font(None, 22)
+    font = assets["font_hud"]
     header_font = pygame.font.Font(None, 24)
     header = header_font.render("Last 10 Runs", True, COLOR_STORM_WARNING)
     screen.blit(header, header.get_rect(center=(WINDOW_WIDTH // 2, start_y)))
     y = start_y + 28
 
-    col_x = [WINDOW_WIDTH // 2 - 200, WINDOW_WIDTH // 2 - 60, WINDOW_WIDTH // 2 + 50, WINDOW_WIDTH // 2 + 140]
-    for label, x in zip(["Score", "Time", "Cause", "Session"], col_x):
+    col_x = [WINDOW_WIDTH // 2 - 180, WINDOW_WIDTH // 2 - 20, WINDOW_WIDTH // 2 + 120]
+    for label, x in zip(["Score", "Time", "Cause"], col_x):
         screen.blit(font.render(label, True, COLOR_TEXT), (x, y))
     y += 22
 
@@ -359,7 +363,7 @@ def _draw_history_table(
             str(score),
             f"{float(entry.get('survival_seconds', 0)):.1f}s",
             _death_cause_label(entry.get("death_cause")),
-            str(entry.get("session_id", "—"))[:8],
+            # str(entry.get("session_id", "—"))[:8],
         ]
         for text, x in zip(row, col_x):
             screen.blit(font.render(text, True, row_color), (x, y))
@@ -407,7 +411,7 @@ def draw_game_over(
         f"Survived: {run_stats.survival_seconds(now_ms):.1f}s",
         f"Terminal theme: {world.label}",
         f"Cause: {run_stats.death_label()}",
-        f"Session ID: {session.session_id}",
+        # f"Session ID: {session.session_id}",
     ]
     for line in summary:
         surface = body_font.render(line, True, COLOR_TEXT)
@@ -415,7 +419,7 @@ def draw_game_over(
         y += 28
 
     history = save_data.get("history", [])
-    y = _draw_history_table(screen, history, run_stats.score, y + 12)
+    y = _draw_history_table(screen, history, run_stats.score, y + 12,assets)
 
     hint_font = assets["font_menu_hint"]
     hint = hint_font.render("Press R to restart  |  H main menu  |  M mute  |  Escape quit", True, COLOR_TEXT)

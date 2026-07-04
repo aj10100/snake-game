@@ -1,17 +1,23 @@
 {
-  "high_score": 120,
+  "high_score": 125,
   "history": [
     {
-      "score": 120,
-      "session_id": "83E12FE9",
-      "survival_seconds": 98.2,
+      "score": 125,
+      "session_id": "9A4F77E4",
+      "survival_seconds": 139.1,
+      "death_cause": "maze"
+    },
+    {
+      "score": 0,
+      "session_id": "9A4F77E4",
+      "survival_seconds": 2.7,
       "death_cause": "wall"
     },
     {
-      "score": 60,
-      "session_id": "83E12FE9",
-      "survival_seconds": 75.5,
-      "death_cause": "self"
+      "score": 50,
+      "session_id": "38D92ACD",
+      "survival_seconds": 39.2,
+      "death_cause": "storm"
     }
   ]
 }

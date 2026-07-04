@@ -1,4 +1,4 @@
-"""Shield charges, invulnerability, and consecutive-break tracking."""
+"""shield charges, invulnerability, and consecutive-break tracking."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from src.config import (
 
 
 class ShieldState:
-    """Shield: 1 wall pass per charge. Wrong color breaks too. 3 consecutive wrong = death."""
+    """shield: 1 wall pass per charge. Wrong color breaks too. 3 consecutive wrong == death."""
 
     def __init__(self) -> None:
         self.charges = 0
@@ -28,7 +28,6 @@ class ShieldState:
         self.charges += 1
 
     def on_wrong_color_break(self) -> tuple[bool, bool]:
-        """Returns (game_over, shield_broke)."""
         broke = False
         self.consecutive_breaks_without_correct += 1
         if self.charges > 0:

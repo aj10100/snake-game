@@ -9,7 +9,7 @@ ASSETS = "assets"
 SFX_EAT          = "eat"
 SFX_TELEPORT     = "teleport_enter"
 SFX_TELEPORT_OUT = "teleport_exit"
-SFX_SHIELD_GAIN  = "shield"      # no dedicated file — reuse eat or add your own
+SFX_SHIELD_GAIN  = "shield"
 SFX_SHIELD_LOSS  = "dead_ding"
 SFX_POISON       = "poison"
 SFX_RECORD       = "high_score"
@@ -18,13 +18,13 @@ SFX_MOVE_CLOUD   = "move_cloud"
 SFX_MOVE_GLACIER = "move_glacier"
 SFX_OPTION_CHOOSE = "option_choose"
 
-# Music tracks keyed by world theme name
+# music tracks keyed by world theme name
 THEME_MUSIC = {
-    "forest":  "forest_desert_cloud_background.mp3",
-    "desert":  "forest_desert_cloud_background.mp3",
-    "ice":     "glacier_cyclone_maze_background.mp3",
-    "storm":   "glacier_cyclone_maze_background.mp3",
-    "maze":    "glacier_cyclone_maze_background.mp3",
+    "forest":  "forest_desert_background.mp3",
+    "desert":  "forest_desert_background.mp3",
+    "ice":     "glacier_maze_background.mp3",
+    "storm":   "storm_background.mp3",
+    "maze":    "glacier_maze_background.mp3",
 }
 
 class SoundManager:
@@ -33,7 +33,6 @@ class SoundManager:
         self.muted = False
         self._current_music_theme: str | None = None
 
-        # Map SFX constant → Sound object (None if file missing)
         self._sounds: dict[str, pygame.mixer.Sound | None] = {}
         self._load_sounds()
 
@@ -66,24 +65,31 @@ class SoundManager:
             snd.play()
 
     def play_theme_music(self, theme: str) -> None:
-        """Switch background music when the world theme changes."""
+        """wwitch background music when the world theme changes."""
         if self.muted:
             return
+
+        if not pygame.mixer.get_init():
+            pygame.mixer.init()
 
         filename = THEME_MUSIC.get(theme)
         if not filename:
             return
+        # only switch if the music file is different
+        if self._current_music_theme == filename:
+            return
         path = os.path.join(ASSETS, filename)
         try:
+            pygame.mixer.music.stop()
             pygame.mixer.music.load(path)
             pygame.mixer.music.set_volume(0.4)
             pygame.mixer.music.play(-1)   # loop forever
-            self._current_music_theme = theme
+            self._current_music_theme = filename
         except Exception as e:
             print(f"[MUSIC] Could not load {path}: {e}")
 
     def play_menu_music(self) -> None:
-        """Play menu/pause music."""
+        """play menu/pause music."""
         if self.muted:
             return
         path = os.path.join(ASSETS, "menu_page_pause_page.mp3")

@@ -1,4 +1,4 @@
-"""Food spawning, Stroop balls, poison, and black storm balls."""
+"""food spawning, stroop balls, poison"""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Paired teleporters: spawn rules, visibility cycle, teleportation, and cooldown."""
+"""paired teleporters- spawn rules, visibility cycle, teleportation, and cooldown."""
 
 from __future__ import annotations
 
@@ -45,7 +45,6 @@ def _has_clearance(center: Position, blocked: Set[Position]) -> bool:
 
 
 class PortalManager:
-    """Entrance/exit pair that cycles visible/hidden and relocates after each teleport."""
 
     def __init__(self) -> None:
         self.entrance: Optional[Position] = None
@@ -131,8 +130,7 @@ class PortalManager:
         now_ms: int,
     ) -> tuple[Optional[str], Optional[PortalKind]]:
         """
-        Entrance -> exit + random theme. Exit -> entrance + storm theme.
-        Returns (previous_theme, portal_used) or (None, None).
+        entrance - exit + random theme. exit - entrance + storm theme.
         """
         if not self.visible or self.cooldown_steps > 0 or self.entrance is None or self.exit is None:
             return None, None

@@ -1,4 +1,4 @@
-"""Environmental movement modifiers: desert, ice/glacier, storm/clouds."""
+"""world movement modifiers: desert, glacier, cyclone/clouds."""
 
 from __future__ import annotations
 
@@ -15,7 +15,6 @@ ARROW_KEYS = {"up", "down", "left", "right"}
 
 
 class PhysicsEngine:
-    """Theme-specific timing and direction rules for grid movement."""
 
     def __init__(self, world: World, difficulty) -> None:
         self.world = world
@@ -40,14 +39,14 @@ class PhysicsEngine:
         self.ate_poison_flag = False
 
     def enter_storm_frozen(self) -> None:
-        """Called when eating poison (storm ball)."""
+        """called when eat poison"""
         self.storm_mode = "frozen"
         self.storm_frozen_step = 0
         self.storm_poison_count += 1
         self.ate_poison_flag = True
 
     def enter_storm_speed(self, score: int) -> bool:
-        """Called on exit portal. Returns True if 3× speed activates."""
+        """called on exit portal. returns True if 3× speed activates."""
         self.exit_portal_count += 1
         if score >= 100 or self.exit_portal_count >= 2:
             self.storm_mode = "speed"
@@ -55,12 +54,12 @@ class PhysicsEngine:
         return False
 
     def on_entry_portal(self) -> None:
-        """Called when entry portal is used — clears all storm state."""
+        """called when entry portal is used — clears all storm state."""
         self.clear_storm_state()
         self.exit_portal_count = 0
 
     def on_food_eaten(self) -> None:
-        """Called when any non-poison food is eaten — exits frozen mode."""
+        """called when any non-poison food is eaten — exits frozen mode."""
         if self.storm_mode == "frozen":
             self.storm_mode = None
             self.storm_poison_count = 0

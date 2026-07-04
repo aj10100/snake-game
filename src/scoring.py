@@ -22,14 +22,14 @@ DEATH_LABELS = {
 
 
 class Session:
-    """Lives for the entire time the program is open."""
+    """for the entire time the program is open."""
 
     def __init__(self) -> None:
         self.session_id = uuid.uuid4().hex[:8].upper()
         self.session_high_score = 0
 
     def note_score(self, score: int) -> bool:
-        """Track best score this session. Returns True if new session best."""
+        """track best score this session. returns True if new session best."""
         if score > self.session_high_score:
             self.session_high_score = score
             return True
@@ -37,7 +37,7 @@ class Session:
 
 
 class RunStats:
-    """Tracks one individual game run within a session."""
+    """tracks one individual game run within a session."""
 
     def __init__(self) -> None:
         self.score = 0

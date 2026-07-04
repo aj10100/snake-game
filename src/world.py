@@ -1,4 +1,4 @@
-"""Map themes, backgrounds, maze layout, and portal-driven theme changes."""
+"""map themes, backgrounds, maze layout, and portal-driven theme changes."""
 
 from __future__ import annotations
 
@@ -52,7 +52,7 @@ assert not _has_one_by_one_pocket(MAZE_WALLS), "Maze layout must not create 1x1 
 
 
 class World:
-    """Active theme, palette, maze walls — themes change only via portals or storm triggers."""
+    """active theme, palette, maze walls — themes change only via portals or storm triggers."""
 
     def __init__(self) -> None:
         self.active_theme = FOREST
@@ -95,26 +95,20 @@ class World:
         return False
 
     def on_food_scored(self, points: int, now_ms: int) -> bool:
-        """Themes no longer auto-shift from score."""
         return False
 
     def portal_shift_theme(self, now_ms: int = 0) -> None:
-        """Entrance portal: random non-storm theme."""
+        """entrance portal - random non-storm theme."""
         choices = [t for t in PORTAL_THEMES if t != self.active_theme]
         if not choices:
             choices = PORTAL_THEMES.copy()
         self.set_theme(random.choice(choices), now_ms)
 
     def enter_storm(self, now_ms: int = 0) -> None:
-        """Exit portal / storm ball: switch to storm (no alert overlay)."""
+        """exit portal / storm ball: switch to storm """
         self.set_theme(STORM, now_ms)
 
-    def enter_portal(self, theme: str | None = None, now_ms: int = 0) -> None:
-        """Debug hook (F2): jump to a theme."""
-        if theme is not None and theme in ALL_THEMES:
-            self.set_theme(theme, now_ms)
-        else:
-            self.portal_shift_theme(now_ms)
+
 
     def set_theme(self, theme: str, now_ms: int = 0) -> None:
         self.active_theme = theme

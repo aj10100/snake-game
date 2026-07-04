@@ -1,4 +1,4 @@
-"""Snake movement, growth, and collision."""
+"""snake movement, growth, and collision."""
 
 from __future__ import annotations
 
