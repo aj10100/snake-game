@@ -49,7 +49,7 @@ THEME_PALETTES = {
 THEME_LABELS = {
     "forest": "Forest",
     "desert": "Desert",
-    "ice": "Ice",
-    "storm": "Storm",
+    "ice": "Glacier",
+    "storm": "Clouds",
     "maze": "Maze",
 }

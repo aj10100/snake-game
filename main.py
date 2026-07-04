@@ -9,14 +9,13 @@ import pygame
 from src import game_state
 from src.config import STORM_BALL_HIDDEN_MAX_MS, STORM_BALL_HIDDEN_MIN_MS
 from src.constants import GRID_HEIGHT, GRID_WIDTH, TARGET_FPS, WINDOW_HEIGHT, WINDOW_TITLE, WINDOW_WIDTH
-from src.debug_overlay import DebugOverlay
 from src.difficulty import DifficultyManager
 from src.food import Food
-from src.live_settings import LiveSettings
-from src.physics import PhysicsEngine, collides_after_move, head_in_collision_zone
+from src.physics import PhysicsEngine , collides_after_move, head_in_collision_zone
 from src.portals import PortalManager
 from src.save_manager import get_high_score, load_save, record_run, reset_all_save
 from src.scoring import DEATH_COLOR_FAIL, DEATH_POISON, DEATH_SELF, DEATH_WALL, RunStats, Session
+DEATH_STORM = "storm"
 from src.shield import ShieldState
 from src.snake import Snake
 from src.sound_manager import (
@@ -38,7 +37,9 @@ from src.ui import (
     draw_new_record_popup,
     draw_pause_overlay,
     draw_playfield,
-    draw_storm_grace_hint,
+    draw_precautions,
+    draw_storm_warning,
+    draw_wrong_color_warning,
 )
 from src.world import STORM, World
 
@@ -81,14 +82,8 @@ def reset_run(
     return now_ms
 
 
-def on_storm_theme_entered(world: World, physics: PhysicsEngine) -> None:
-    physics.on_storm_entered()
-
-
 def handle_theme_change(prev_theme: str | None, world: World, physics: PhysicsEngine) -> None:
-    if world.active_theme == STORM and prev_theme != STORM:
-        on_storm_theme_entered(world, physics)
-
+    pass  # No automatic storm wind setup needed anymore
 
 def handle_events(
     state: str,
@@ -98,8 +93,7 @@ def handle_events(
     world: World,
     physics: PhysicsEngine,
     portals: PortalManager,
-    debug: DebugOverlay,
-    live: LiveSettings,
+
     difficulty: DifficultyManager,
     shield: ShieldState,
     sound: SoundManager,
@@ -127,11 +121,11 @@ def handle_events(
                     menu_selection = (menu_selection + 1) % len(MENU_ITEMS)
                 elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
                     if menu_selection == 0:
-                        move_reset = reset_run(
-                            snake, food, run_stats, world, physics, portals, difficulty, shield, now_ms
-                        )
+                        move_reset = reset_run(snake, food, run_stats, world, physics, portals, difficulty, shield, now_ms)
                         new_state = game_state.PLAYING
                     elif menu_selection == 1:
+                        new_state = game_state.PRECAUTIONS
+                    elif menu_selection == 2:
                         reset_all_save(save_data)
                         session.session_high_score = 0
                     else:
@@ -144,24 +138,24 @@ def handle_events(
                 sound.toggle_mute()
                 continue
 
-            if event.key == pygame.K_F1:
-                debug.toggle()
+
                 continue
 
             if new_state == game_state.DEAD and event.key == pygame.K_h:
                 new_state = game_state.MENU
                 continue
 
-            if debug.handle_key(event.key, live, world, physics, difficulty):
-                if event.key == pygame.K_t:
-                    spawn_food(food, snake, world, portals, difficulty, run_stats.score)
-                continue
 
             key_name = ARROW_KEY_MAP.get(event.key)
 
             if new_state == game_state.PAUSED:
                 if event.key in (pygame.K_p, pygame.K_ESCAPE):
                     new_state = game_state.PLAYING
+                continue
+
+            if new_state == game_state.PRECAUTIONS:
+                if event.key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_SPACE):
+                    new_state = game_state.MENU
                 continue
 
             if event.key == pygame.K_ESCAPE:
@@ -209,16 +203,30 @@ def process_food_eat(
 
     eat_kind, point_delta = food.handle_eat(snake.head)
 
+    # ── Storm ball (poison) ────────────────────────────────────
     if eat_kind == "storm_ball":
         sound.play(SFX_POISON)
-        physics.activate_speed_boost(now_ms)
+        # Death: poison while 3× speed
+        if physics.storm_mode == "speed":
+            run_stats.record_death(DEATH_STORM, now_ms)
+            return game_state.DEAD
+        # Death: 2nd consecutive poison in storm
+        if world.active_theme == STORM and physics.storm_poison_count >= 1:
+            run_stats.record_death(DEATH_STORM, now_ms)
+            return game_state.DEAD
+        # Enter storm frozen mode
         prev_theme = world.active_theme
         world.enter_storm(now_ms)
-        handle_theme_change(prev_theme, world, physics)
+        physics.enter_storm_frozen()
         return None
 
+    # ── Poison food item ───────────────────────────────────────
     if eat_kind == "poison":
         sound.play(SFX_POISON)
+        # Death: poison while 3× speed
+        if physics.storm_mode == "speed":
+            run_stats.record_death(DEATH_POISON, now_ms)
+            return game_state.DEAD
         block = shield.try_block_poison()
         if block is not None:
             if block == "broke":
@@ -228,8 +236,13 @@ def process_food_eat(
         run_stats.record_death(DEATH_POISON, now_ms)
         return game_state.DEAD
 
+    # ── Wrong color ────────────────────────────────────────────
     if eat_kind == "color_wrong":
         sound.play(SFX_EAT)
+        # Death: wrong color while 3× speed
+        if physics.storm_mode == "speed":
+            run_stats.record_death(DEATH_STORM, now_ms)
+            return game_state.DEAD
         run_stats.add_score(point_delta)
         game_over, shield_broke = shield.on_wrong_color_break()
         if shield_broke:
@@ -240,13 +253,16 @@ def process_food_eat(
         food.respawn_color_pair(blocked_spawn_cells(snake, world, portals), snake, run_stats.score)
         return None
 
+    # ── Normal / correct color ─────────────────────────────────
     if eat_kind in ("normal", "color_correct"):
         sound.play(SFX_EAT)
         snake.queue_growth()
+        physics.on_food_eaten()  # Clears storm frozen mode
 
     if eat_kind == "color_correct":
         shield.on_correct_color()
         sound.play(SFX_SHIELD_GAIN)
+        physics.on_food_eaten()
 
     run_stats.add_score(point_delta)
 
@@ -256,7 +272,6 @@ def process_food_eat(
         spawn_food(food, snake, world, portals, difficulty, run_stats.score)
 
     return None
-
 
 def update_game(
     state: str,
@@ -271,27 +286,40 @@ def update_game(
     sound: SoundManager,
     last_move_ms: int,
     now_ms: int,
-) -> tuple[str, int]:
+) -> tuple[str, int,str, int]:
+
+    storm_warn=""
+    storm_warn_until=0
     if state != game_state.PLAYING:
-        return state, last_move_ms
+        return state, last_move_ms,"", 0
 
     portals.update(now_ms, blocked_spawn_cells(snake, world, portals))
     food.update_storm_ball(now_ms, blocked_spawn_cells(snake, world, portals), snake)
 
     if not physics.allows_movement(run_stats.score):
-        return state, last_move_ms
+        return state, last_move_ms,"", 0
 
     if now_ms - last_move_ms < physics.move_interval_ms(now_ms):
-        return state, last_move_ms
+        return state, last_move_ms,"", 0
 
     move_direction = physics.resolve_direction(snake, world.maze_walls, now_ms, run_stats.score)
     pre_move = snake.snapshot()
     snake.move(move_direction)
 
-    prev_theme, _portal_used = portals.try_teleport(snake, world, world.maze_walls, now_ms)
+    prev_theme, portal_used = portals.try_teleport(snake, world, world.maze_walls, now_ms)
     if prev_theme is not None:
         sound.play(SFX_TELEPORT)
-        handle_theme_change(prev_theme, world, physics)
+        if portal_used == "exit":
+            # death- exit-portal after eating poison
+            if physics.ate_poison_flag:
+                run_stats.record_death(DEATH_STORM, now_ms)
+                return game_state.DEAD, now_ms,"", 0
+            speed_on = physics.enter_storm_speed(run_stats.score)
+            if physics.exit_portal_count >= 2:
+                storm_warn = "WARNING: reverse portal speed active!"
+                storm_warn_until = now_ms + 2000
+        elif portal_used == "entrance":
+            physics.on_entry_portal()
         for pos in food.all_positions():
             if pos in world.blocked_cells() or pos in portals.blocked_cells():
                 spawn_food(food, snake, world, portals, difficulty, run_stats.score)
@@ -301,25 +329,22 @@ def update_game(
         food, snake, run_stats, world, physics, portals, difficulty, shield, sound, now_ms
     )
     if dead_state is not None:
-        return dead_state, now_ms
+        return dead_state, now_ms,"", 0
 
     death = collides_after_move(snake, world.maze_walls)
     if death is not None:
-        if shield.is_invulnerable():
-            if death == DEATH_WALL:
-                snake.restore(pre_move)
-            else:
-                run_stats.record_death(death, now_ms)
-                return game_state.DEAD, now_ms
-        else:
+        if death == DEATH_WALL:
             block = shield.try_block_collision()
-            if block in ("broke", "invuln"):
-                snake.restore(pre_move)
-                if block == "broke":
-                    sound.play(SFX_SHIELD_LOSS)
+            if block is not None:
+                hx, hy = snake.head
+                snake.body[0] = (hx % GRID_WIDTH, hy % GRID_HEIGHT)
+                sound.play(SFX_SHIELD_LOSS)
             else:
                 run_stats.record_death(death, now_ms)
-                return game_state.DEAD, now_ms
+                return game_state.DEAD, now_ms,"", 0
+        else:
+            run_stats.record_death(death, now_ms)
+            return game_state.DEAD, now_ms,"", 0
 
     shield.on_grid_step(head_in_collision_zone(snake, world.maze_walls))
 
@@ -327,7 +352,7 @@ def update_game(
     portals.on_grid_step()
     physics.consume_ice_step(run_stats.score)
 
-    return state, now_ms
+    return state, now_ms, storm_warn, storm_warn_until
 
 
 def draw(
@@ -340,8 +365,7 @@ def draw(
     world: World,
     physics: PhysicsEngine,
     portals: PortalManager,
-    debug: DebugOverlay,
-    live: LiveSettings,
+
     difficulty: DifficultyManager,
     shield: ShieldState,
     now_ms: int,
@@ -349,7 +373,13 @@ def draw(
     new_record: bool,
     menu_selection: int,
     record_popup_until_ms: int,
+    storm_warning_msg: str,
+    storm_warning_until_ms: int,
 ) -> None:
+
+    if state == game_state.PRECAUTIONS:
+        draw_precautions(screen)
+        return
     high_score = get_high_score(save_data)
 
     if state == game_state.MENU:
@@ -358,11 +388,13 @@ def draw(
 
     draw_playfield(screen, snake, food, world, portals, GRID_WIDTH, GRID_HEIGHT, shield, now_ms)
     draw_hud(screen, run_stats, now_ms, world)
+    draw_wrong_color_warning(screen, shield.consecutive_breaks_without_correct)
+    if state == game_state.PLAYING and now_ms < storm_warning_until_ms:
+        draw_storm_warning(screen, storm_warning_msg, now_ms)
     draw_color_target(screen, food)
     if state == game_state.PLAYING and now_ms < record_popup_until_ms:
         draw_new_record_popup(screen, run_stats.score, now_ms)
-    draw_storm_grace_hint(screen, world, physics, now_ms)
-    debug.draw(screen, snake, world, physics, portals, live, difficulty, run_stats.score, now_ms)
+
 
     if state == game_state.PAUSED:
         draw_pause_overlay(screen)
@@ -378,23 +410,25 @@ def main() -> None:
     clock = pygame.time.Clock()
 
     save_data = load_save()
-    live = LiveSettings()
-    debug = DebugOverlay()
     difficulty = DifficultyManager()
     sound = SoundManager()
     shield = ShieldState()
     session = Session()
     run_stats = RunStats()
-    world = World(live)
-    physics = PhysicsEngine(world, live, difficulty)
-    portals = PortalManager(live)
+
     snake = Snake()
     food = Food()
+    world = World()
+    physics = PhysicsEngine(world, difficulty)
+    portals = PortalManager()
 
     now_ms = pygame.time.get_ticks()
 
     state = game_state.MENU
     menu_selection = 0
+    show_precautions = False
+    storm_warning_msg = ""
+    storm_warning_until_ms = 0
     last_move_ms = now_ms
     new_record = False
     death_saved = False
@@ -406,7 +440,7 @@ def main() -> None:
     while running:
         now_ms = pygame.time.get_ticks()
         running, state, move_reset, menu_selection = handle_events(
-            state, snake, food, run_stats, world, physics, portals, debug, live, difficulty, shield, sound, menu_selection, save_data, session, now_ms
+            state, snake, food, run_stats, world, physics, portals, difficulty, shield, sound, menu_selection, save_data, session, now_ms
         )
         if move_reset is not None:
             last_move_ms = move_reset
@@ -417,9 +451,12 @@ def main() -> None:
             record_popup_shown = False
 
         prev_state = state
-        state, last_move_ms = update_game(
+        state, last_move_ms, sw_msg, sw_until = update_game(
             state, snake, food, run_stats, world, physics, portals, difficulty, shield, sound, last_move_ms, now_ms
         )
+        if sw_msg:
+            storm_warning_msg = sw_msg
+            storm_warning_until_ms = sw_until
 
         if (
             state == game_state.PLAYING
@@ -427,19 +464,22 @@ def main() -> None:
             and run_stats.score > baseline_high_score
         ):
             record_popup_shown = True
-            record_popup_until_ms = now_ms + 2500
+            record_popup_until_ms = now_ms + 1000
             sound.play(SFX_RECORD)
 
         if state == game_state.DEAD and prev_state != game_state.DEAD:
             sound.play(SFX_DIE)
             if not death_saved:
                 new_record = record_run(save_data, session, run_stats, now_ms)
+                if record_popup_shown:
+                    new_record = False
                 session.note_score(run_stats.score)
                 death_saved = True
 
         draw(
             screen, state, session, run_stats, snake, food, world, physics, portals,
-            debug, live, difficulty, shield, now_ms, save_data, new_record, menu_selection, record_popup_until_ms,
+             difficulty, shield, now_ms, save_data, new_record, menu_selection,
+            record_popup_until_ms, storm_warning_msg, storm_warning_until_ms,
         )
         pygame.display.flip()
         clock.tick(TARGET_FPS)

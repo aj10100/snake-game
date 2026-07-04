@@ -1,6 +1,24 @@
 {
-  "high_score": 110,
+  "high_score": 225,
   "history": [
+    {
+      "score": 60,
+      "session_id": "59DBFC83",
+      "survival_seconds": 60.1,
+      "death_cause": "maze"
+    },
+    {
+      "score": 90,
+      "session_id": "8B15E381",
+      "survival_seconds": 119.0,
+      "death_cause": "wall"
+    },
+    {
+      "score": 225,
+      "session_id": "55E58B88",
+      "survival_seconds": 254.8,
+      "death_cause": "color_fail"
+    },
     {
       "score": 40,
       "session_id": "AA372B56",
@@ -41,12 +59,6 @@
       "score": 110,
       "session_id": "F380E646",
       "survival_seconds": 112.3,
-      "death_cause": "wall"
-    },
-    {
-      "score": 40,
-      "session_id": "F380E646",
-      "survival_seconds": 20.9,
       "death_cause": "wall"
     }
   ]

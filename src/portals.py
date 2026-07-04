@@ -11,8 +11,8 @@ from src.config import (
     PORTAL_HIDDEN_MIN_MS,
     PORTAL_VISIBLE_MAX_MS,
     PORTAL_VISIBLE_MIN_MS,
+    PORTAL_COOLDOWN_STEPS,
 )
-from src.live_settings import LiveSettings
 from src.constants import GRID_HEIGHT, GRID_WIDTH
 from src.physics import is_safe_head_position
 from src.snake import Snake
@@ -47,8 +47,7 @@ def _has_clearance(center: Position, blocked: Set[Position]) -> bool:
 class PortalManager:
     """Entrance/exit pair that cycles visible/hidden and relocates after each teleport."""
 
-    def __init__(self, live: LiveSettings) -> None:
-        self.live = live
+    def __init__(self) -> None:
         self.entrance: Optional[Position] = None
         self.exit: Optional[Position] = None
         self.cooldown_steps = 0
@@ -154,7 +153,7 @@ class PortalManager:
             return None, None
 
         snake.teleport_head(target)
-        self.cooldown_steps = self.live.portal_cooldown_steps
+        self.cooldown_steps = PORTAL_COOLDOWN_STEPS
         self._begin_hidden_phase(now_ms)
 
         previous_theme = world.active_theme

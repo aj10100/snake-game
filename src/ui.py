@@ -40,7 +40,7 @@ from src.snake import Snake
 from src.stroop_colors import stroop_label, stroop_rgb
 from src.world import STORM, World
 
-MENU_ITEMS = ["Play Game", "Reset Data", "Quit"]
+MENU_ITEMS = ["start", "precautions", "reset record", "quit"]
 
 
 def draw_main_menu(screen: pygame.Surface, selected: int, high_score: int) -> None:
@@ -49,11 +49,11 @@ def draw_main_menu(screen: pygame.Surface, selected: int, high_score: int) -> No
     center_x = WINDOW_WIDTH // 2
 
     title_font = pygame.font.Font(None, 80)
-    title = title_font.render("Advanced Snake", True, COLOR_SNAKE_HEAD)
+    title = title_font.render("Classic Snake Game", True, COLOR_SNAKE_HEAD)
     screen.blit(title, title.get_rect(center=(center_x, 110)))
 
     tag_font = pygame.font.Font(None, 28)
-    tagline = tag_font.render("Stroop Colors  |  Portals  |  Shields  |  Themes", True, COLOR_TEXT)
+    tagline = tag_font.render("feel free to explore", True, COLOR_TEXT)
     screen.blit(tagline, tagline.get_rect(center=(center_x, 158)))
 
     score_font = pygame.font.Font(None, 36)
@@ -83,11 +83,43 @@ def draw_main_menu(screen: pygame.Surface, selected: int, high_score: int) -> No
 
     ctrl_font = pygame.font.Font(None, 22)
     ctrl = ctrl_font.render(
-        "In-game: Arrows move  |  P pause  |  F1 debug  |  M mute",
+        "In-game: Arrows move  |  P pause  |  M mute",
         True,
         (160, 160, 170),
     )
     screen.blit(ctrl, ctrl.get_rect(center=(center_x, WINDOW_HEIGHT - 28)))
+
+def draw_precautions(screen: pygame.Surface) -> None:
+    screen.fill(COLOR_BACKGROUND)
+    center_x = WINDOW_WIDTH // 2
+
+    title_font = pygame.font.Font(None, 52)
+    title = title_font.render("Precautions", True, COLOR_STORM_WARNING)
+    screen.blit(title, title.get_rect(center=(center_x, 60)))
+
+    body_font = pygame.font.Font(None, 26)
+    lines = [
+        "There are 4 worlds:",
+        "",
+        "  Forest",
+        "  Desert",
+        "  Glacier",
+        "  Clouds / Cyclone",
+        "",
+        "they come with your actions but quite randomly .",
+        "",
+         "Feel free to explore ",
+
+    ]
+    y = 120
+    for line in lines:
+        surf = body_font.render(line, True, COLOR_TEXT)
+        screen.blit(surf, surf.get_rect(center=(center_x, y)))
+        y += 32
+
+    hint_font = pygame.font.Font(None, 24)
+    hint = hint_font.render("Press Escape or Enter to go back", True, COLOR_TEXT)
+    screen.blit(hint, hint.get_rect(center=(center_x, WINDOW_HEIGHT - 40)))
 
 
 def draw_grid(
@@ -110,6 +142,22 @@ def draw_grid(
             (0, PLAYFIELD_Y + y * CELL_SIZE),
             (WINDOW_WIDTH, PLAYFIELD_Y + y * CELL_SIZE),
         )
+
+def draw_wrong_color_warning(screen: pygame.Surface, consecutive: int) -> None:
+    if consecutive <= 0:
+        return
+    font = pygame.font.Font(None, 26)
+    color = COLOR_GAME_OVER if consecutive >= 2 else COLOR_STORM_WARNING
+    text = font.render(f"Wrong color: {consecutive}/3", True, color)
+    screen.blit(text, text.get_rect(midtop=(WINDOW_WIDTH // 2, PLAYFIELD_Y + 6)))
+
+def draw_storm_warning(screen: pygame.Surface, msg: str, now_ms: int) -> None:
+    if not msg:
+        return
+    font = pygame.font.Font(None, 28)
+    color = COLOR_GAME_OVER if (now_ms // 400) % 2 == 0 else COLOR_STORM_WARNING
+    surf = font.render(msg, True, color)
+    screen.blit(surf, surf.get_rect(midbottom=(WINDOW_WIDTH // 2, WINDOW_HEIGHT - 8)))
 
 
 def draw_cell(screen: pygame.Surface, grid_pos: tuple[int, int], color: tuple[int, int, int]) -> None:
@@ -179,10 +227,7 @@ def draw_playfield(
 
     flash_invuln = shield.is_invulnerable() and (now_ms // 120) % 2 == 0
     for index, segment in enumerate(snake.body):
-        if index == 0:
-            color = COLOR_INVULN_FLASH if flash_invuln else COLOR_SNAKE_HEAD
-        else:
-            color = COLOR_SNAKE_BODY
+        color = COLOR_SNAKE_HEAD if index == 0 else COLOR_SNAKE_BODY
         draw_cell(screen, segment, color)
 
 
@@ -195,11 +240,8 @@ def draw_color_target(screen: pygame.Surface, food: Food) -> None:
 
     font = pygame.font.Font(None, 22)
     label = font.render(word, True, ink)
-    hint_font = pygame.font.Font(None, 16)
-    hint = hint_font.render("word", True, (150, 150, 160))
-    x = WINDOW_WIDTH - label.get_width() - hint.get_width() - 16
+    x = WINDOW_WIDTH - label.get_width() - 10
     screen.blit(label, (x, 8))
-    screen.blit(hint, (x + label.get_width() + 4, 12))
 
 
 def draw_hud(
@@ -210,7 +252,7 @@ def draw_hud(
 ) -> None:
     font = pygame.font.Font(None, 20)
     text = (
-        f"Score {run_stats.score}  |  {world.label}  |  "
+        f"Score {run_stats.score}  | "
         f"{run_stats.survival_seconds(now_ms):.1f}s"
     )
     screen.blit(font.render(text, True, COLOR_TEXT), (8, 5))
@@ -238,56 +280,6 @@ def draw_new_record_popup(screen: pygame.Surface, score: int, now_ms: int) -> No
     screen.blit(box, (center_x - box_w // 2, center_y - box_h // 2))
 
 
-def draw_storm_alert(screen: pygame.Surface, world: World, now_ms: int) -> None:
-    if not world.is_storm_alert_active(now_ms):
-        return
-
-    remaining_s = max(0.0, (world.storm_alert_until_ms - now_ms) / 1000.0)
-    grace = world.storm_grace_steps_remaining
-
-    overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
-    pulse = 120 + int(40 * abs((now_ms // 250) % 2 - 0.5) * 2)
-    overlay.fill((40, 40, 80, pulse))
-    screen.blit(overlay, (0, 0))
-
-    center_x = WINDOW_WIDTH // 2
-    title_font = pygame.font.Font(None, 64)
-    title = title_font.render("STORM WARNING", True, COLOR_STORM_WARNING)
-    screen.blit(title, title.get_rect(center=(center_x, WINDOW_HEIGHT // 2 - 50)))
-
-    body_font = pygame.font.Font(None, 32)
-    lines = [
-        f"Wind direction: {world.storm_wind_label}",
-        f"Winds begin in {grace} steps",
-        f"Alert ends in {remaining_s:.1f}s",
-        "Snake frozen — plan your route",
-    ]
-    y = WINDOW_HEIGHT // 2
-    for line in lines:
-        surface = body_font.render(line, True, COLOR_TEXT)
-        screen.blit(surface, surface.get_rect(center=(center_x, y)))
-        y += 36
-
-
-def draw_storm_grace_hint(
-    screen: pygame.Surface,
-    world: World,
-    physics: PhysicsEngine,
-    now_ms: int,
-) -> None:
-    """Small reminder while storm grace steps remain after the main alert fades."""
-    if world.active_theme != STORM or world.is_storm_alert_active(now_ms):
-        return
-    if world.storm_grace_steps_remaining <= 0:
-        return
-
-    font = pygame.font.Font(None, 28)
-    text = font.render(
-        f"Storm winds in {world.storm_grace_steps_remaining} steps ({world.storm_wind_label})",
-        True,
-        COLOR_STORM_WARNING,
-    )
-    screen.blit(text, text.get_rect(midtop=(WINDOW_WIDTH // 2, WINDOW_HEIGHT - 36)))
 
 
 def draw_pause_overlay(screen: pygame.Surface) -> None:

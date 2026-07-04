@@ -6,7 +6,6 @@ import random
 from typing import Set, Tuple
 
 from src.constants import GRID_HEIGHT, GRID_WIDTH, THEME_LABELS, THEME_PALETTES
-from src.live_settings import LiveSettings
 
 Position = Tuple[int, int]
 
@@ -19,12 +18,12 @@ MAZE = "maze"
 ALL_THEMES = [FOREST, DESERT, ICE, STORM, MAZE]
 PORTAL_THEMES = [FOREST, DESERT, ICE, MAZE]
 
-WIND_LABELS = {
-    (1, 0): "EAST",
-    (-1, 0): "WEST",
-    (0, -1): "NORTH",
-    (0, 1): "SOUTH",
-}
+# WIND_LABELS = {
+#     (1, 0): "EAST",
+#     (-1, 0): "WEST",
+#     (0, -1): "NORTH",
+#     (0, 1): "SOUTH",
+# }
 
 
 def build_maze_walls() -> Set[Position]:
@@ -55,17 +54,11 @@ assert not _has_one_by_one_pocket(MAZE_WALLS), "Maze layout must not create 1x1 
 class World:
     """Active theme, palette, maze walls — themes change only via portals or storm triggers."""
 
-    def __init__(self, live: LiveSettings) -> None:
-        self.live = live
+    def __init__(self) -> None:
         self.active_theme = FOREST
-        self.storm_wind_direction: Position = (1, 0)
-        self.storm_grace_steps_remaining = 0
-        self._pick_storm_wind()
 
     def reset(self) -> None:
         self.active_theme = FOREST
-        self.storm_grace_steps_remaining = 0
-        self._pick_storm_wind()
 
     @property
     def label(self) -> str:
@@ -73,7 +66,7 @@ class World:
 
     @property
     def storm_wind_label(self) -> str:
-        return WIND_LABELS.get(self.storm_wind_direction, "UNKNOWN")
+        return ""
 
     @property
     def background_color(self) -> tuple[int, int, int]:
@@ -99,9 +92,7 @@ class World:
         return False
 
     def storm_wind_active(self, now_ms: int) -> bool:
-        if self.active_theme != STORM:
-            return False
-        return self.storm_grace_steps_remaining <= 0
+        return False
 
     def on_food_scored(self, points: int, now_ms: int) -> bool:
         """Themes no longer auto-shift from score."""
@@ -126,23 +117,17 @@ class World:
             self.portal_shift_theme(now_ms)
 
     def set_theme(self, theme: str, now_ms: int = 0) -> None:
-        previous = self.active_theme
         self.active_theme = theme
-        if theme == STORM and previous != STORM:
-            self._begin_storm_entry()
-        elif theme != STORM:
-            self.storm_grace_steps_remaining = 0
+
 
     def on_grid_step(self) -> None:
-        if self.active_theme == STORM and self.storm_grace_steps_remaining > 0:
-            self.storm_grace_steps_remaining -= 1
+        pass
 
     def _begin_storm_entry(self) -> None:
-        self._pick_storm_wind()
-        self.storm_grace_steps_remaining = self.live.storm_grace_steps
+        pass
 
     def _pick_storm_wind(self) -> None:
-        self.storm_wind_direction = random.choice([(1, 0), (-1, 0), (0, 1), (0, -1)])
+        pass
 
     def points_until_shift(self) -> int:
         return 0
