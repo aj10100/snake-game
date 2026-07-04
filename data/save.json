@@ -1,0 +1,53 @@
+{
+  "high_score": 110,
+  "history": [
+    {
+      "score": 40,
+      "session_id": "AA372B56",
+      "survival_seconds": 22.9,
+      "death_cause": "wall"
+    },
+    {
+      "score": 30,
+      "session_id": "AA372B56",
+      "survival_seconds": 14.5,
+      "death_cause": "wall"
+    },
+    {
+      "score": 20,
+      "session_id": "AA372B56",
+      "survival_seconds": 9.8,
+      "death_cause": "maze"
+    },
+    {
+      "score": 50,
+      "session_id": "AA372B56",
+      "survival_seconds": 23.7,
+      "death_cause": "wall"
+    },
+    {
+      "score": 50,
+      "session_id": "AA372B56",
+      "survival_seconds": 40.8,
+      "death_cause": "wall"
+    },
+    {
+      "score": 50,
+      "session_id": "7EA4CABC",
+      "survival_seconds": 39.3,
+      "death_cause": "wall"
+    },
+    {
+      "score": 110,
+      "session_id": "F380E646",
+      "survival_seconds": 112.3,
+      "death_cause": "wall"
+    },
+    {
+      "score": 40,
+      "session_id": "F380E646",
+      "survival_seconds": 20.9,
+      "death_cause": "wall"
+    }
+  ]
+}
